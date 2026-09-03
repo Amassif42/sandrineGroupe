@@ -158,7 +158,7 @@ function gen_groupe() {
   let g2 = new Groupe(Math.floor(json.length / 2))
   let wg2 = g2.gen()
 
-  let g3 = new Groupe(null)
+  let g3 = new Groupe(json.length)
   let wg3 = g3.gen()
 
   XLSX.utils.book_append_sheet(wb, wg1, "groupe1");
@@ -167,7 +167,7 @@ function gen_groupe() {
 
   XLSX.utils.book_append_sheet(wb, wg3, "groupe3");
 
-  let wgp = XLSX.utils.json_to_sheet(problemeStudents);
+  let wgp = XLSX.utils.json_to_sheet(problemeStudents.concat(json));
   XLSX.utils.book_append_sheet(wb, wgp, "groupeProbleme");
 
   XLSX.writeFile(wb, "groupes.xlsx");
