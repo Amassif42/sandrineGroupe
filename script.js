@@ -170,5 +170,5 @@ function gen_groupe() {
   let wgp = XLSX.utils.json_to_sheet(problemeStudents);
   XLSX.utils.book_append_sheet(wb, wgp, "groupeProbleme");
 
-  XLSX.writeFile(wb, "SheetJSExportAOO.xlsx");
+  XLSX.writeFile(wb, "groupes.xlsx");
 }
