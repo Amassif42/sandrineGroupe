@@ -134,22 +134,6 @@ function gen_groupe() {
   // Elève les etudiant en Césure
   json = json.filter((e) => e == null || e["Binome DEB"] != "Césure")
 
-  // trouve les binome
-  let bID = 1
-  for (let e of json) {
-    for (let s of json) {
-      if (typeof e["Binome DEB"] !== 'undefined') {
-        // & e["Binome DEB"].split(" ").includes(s["NOM"])
-
-        if (e["Binome DEB"].split(" ").includes(s["NOM"])) {
-          console.log("tezteznj")
-          s["Num Binome"] = e["Num Binome"] = bID++;
-          break;
-        }
-      }
-    }
-  }
-
   pNoGre = getPNoGre(json)
 
   console.log(pNoGre)
@@ -170,8 +154,25 @@ function gen_groupe() {
   for (let e of json) {
     for (let i in gList) {
       if (!("Binome DEB" in e)) continue
-      else if (e["Binome DEB"].split("/").slice(-1)[0].replace(" ", "") == "groupe" + (1 + i)) {
+      else if (e["Binome DEB"].split("/").slice(-1)[0].replace(" ", "").toLowerCase() == "groupe" + (parseInt(i) + 1)) {
+        console.log("demande un groupe", e)
         gList[i].add(e)
+      }
+    }
+  }
+
+    // trouve les binome
+  let bID = 1
+  for (let e of json) {
+    for (let s of json) {
+      if (typeof e["Binome DEB"] !== 'undefined') {
+        // & e["Binome DEB"].split(" ").includes(s["NOM"])
+
+        if (e["Binome DEB"].split(" ").includes(s["NOM"])) {
+          console.log("tezteznj")
+          s["Num Binome"] = e["Num Binome"] = bID++;
+          break;
+        }
       }
     }
   }
@@ -179,9 +180,11 @@ function gen_groupe() {
   while (json.filter((e) => "Num Binome" in e).length > 0) {
     for (let g of gList) {
       try { g.addForBinome(json.filter((e) => "Num Binome" in e)[0]) }
-      catch { break }
+      catch { console.log("sat"); break }
     }
   }
+
+  console.log("--2")
 
   let testIndex = 0
 
@@ -206,10 +209,14 @@ function gen_groupe() {
     sGList[gIndex].add(json[0]);
   }
 
+
+
+  console.log("--3")
+
   for (i in gList) {
     try {
       let x = XLSX.utils.json_to_sheet(gList[i].students)
-      XLSX.utils.book_append_sheet(wb, x, "groupe" + (1 + i));
+      XLSX.utils.book_append_sheet(wb, x, "groupe" + (parseInt(i) + 1));
     } catch { }
   }
 
