@@ -54,68 +54,62 @@ function getPNoGre(json) {
 }
 
 function isNoGre(s) {
-  return (s["N-1"] != "Université Grenoble Alpes - 38400 - Saint-Martin-d'Hères" ||
-    s["Nationalité"] != "France")
+  try {
+    return (s["N-1"] != "Université Grenoble Alpes - 38400 - Saint-Martin-d'Hères" ||
+      s["Nationalité"] != "France")
+  } catch (e) { return false }
+}
+
+function findBinome(s) {
+  for (e of json) {
+    if (e["NOM"] == s["Binome DEB"]) { return e; }
+  }
 }
 
 class Groupe {
   constructor(size = null) {
+    console.log(size)
     this.size = size
     this.students = []
   }
 
   gen() {
+    let toBeIngore = []
+    while (json.length > 3 & (this.students.length < this.size || this.size == null)) {
 
-    let index = 0
+      let f = json.find((e) =>
+        ((pNoGre >= getPNoGre(this.students) & isNoGre(e)) ||
+          (pNoGre <= getPNoGre(this.students) & !isNoGre(e))) &
+        toBeIngore.findIndex((a) => JSON.stringify(e) == JSON.stringify(a)) == -1
+      )
 
-    while (json.length > 0 & (this.students.length < this.size || this.size == null)) {
-      index++
-      for (let e of json) {
-        if (pNoGre - getPNoGre(this.students) > 0.1) {
-          if (isNoGre(e)) { this.add(e); break }
-        } else if (pNoGre - getPNoGre(this.students) < -0.1) {
-          if (!isNoGre(e)) { this.add(e); break }
-        } else {
-          this.add(e); break
-        }
-      }
+      if (typeof f !== 'undefined') {
+        try {
+          this.addForBinome(f);
+        } catch (e) { toBeIngore.push(f); console.error(e) }
+      } else break
     }
+
     console.log("-----------", this.students.length, this.size)
 
-    return XLSX.utils.json_to_sheet(this.students);
+    try { return XLSX.utils.json_to_sheet(this.students) } catch (e) { return null }
   }
 
-  add(s, recursive = true) {
+  addForBinome(s) {
+    if ("Num Binome" in s) {
+      let bin = json.filter((e) => e["Num Binome"] == s["Num Binome"])
+      if (bin.length != 2) { throw new Error("Binome non trouver") }
+      bin.forEach((e) => this.add(e))
+    } /* else if (!("Binome DEB" in s)) {
+      let bin = json.filter((e) => !("Binome DEB" in e || "Num Binome" in e)).slice(0, 2)
+      if (bin.length < 2) { throw new Error("Personne pour mettre avec cette personne") }
+      bin.forEach((e) => this.add(e)) 
+      } */ else throw new Error("Pas de binome")
+  }
+
+  add(s) {
     this.students.push(s)
-
-    let deleteFalg = false
     json = json.filter((e) => JSON.stringify(e) != JSON.stringify(s))
-
-    if (!recursive) return
-
-    if (s["Binome DEB"] == "Validé" || s["Binome DEB"] == "pas DEB en présentiel") return
-
-    if("Binome DEB" in s) {
-      for(e of json) {
-        if(e["NOM"] == s["Binome DEB"]) {this.add(e, false); return;}
-      }
-    } else {
-      for(e of json) {
-        if(!("Binome DEB" in e)) {this.add(e, false); return;}
-      }      
-    }
-
-/*
-    for (e of json) {
-      if ("Binome DEB" in s & "NOM" in e) if (s["Binome DEB"].toUpperCase() == e["NOM"].toUpperCase()) {
-        this.add(e, false); return;
-      } else if (!("Binome DEB" in s) & !("Binome DEB" in e)) { this.add(e, false); return; }
-    } */
-
-    // throw new Error("zhgeiurhezbrh")
-
-    console.log("aaaaaaaaaaaaaaaaaaaaaaaa", s, json)
-    problemeStudents.push(s)
   }
 
   toString() {
@@ -140,8 +134,20 @@ function gen_groupe() {
   // Elève les etudiant en Césure
   json = json.filter((e) => e == null || e["Binome DEB"] != "Césure")
 
-  for(e of json.filter((e) => "Binome DEB" in e)) {
-    for(s of json) {if (s["NOM"] == e["Binome DEB"]) {s["Binome DEB"] = e["NOM"]}}
+  // trouve les binome
+  let bID = 1
+  for (let e of json) {
+    for (let s of json) {
+      if (typeof e["Binome DEB"] !== 'undefined') {
+        // & e["Binome DEB"].split(" ").includes(s["NOM"])
+
+        if (e["Binome DEB"].split(" ").includes(s["NOM"])) {
+          console.log("tezteznj")
+          s["Num Binome"] = e["Num Binome"] = bID++;
+          break;
+        }
+      }
+    }
   }
 
   pNoGre = getPNoGre(json)
@@ -152,20 +158,60 @@ function gen_groupe() {
 
   var wb = XLSX.utils.book_new();
 
-  let g1 = new Groupe(6)
-  let wg1 = g1.gen()
+  gList = []
+  for (e of document.getElementById("groupes").getElementsByTagName("input")) {
+    gList.push(new Groupe(parseInt(e.value)))
+  }
 
-  let g2 = new Groupe(Math.floor(json.length / 2))
-  let wg2 = g2.gen()
+  console.log(gList)
 
-  let g3 = new Groupe(json.length)
-  let wg3 = g3.gen()
+  console.log(json)
 
-  XLSX.utils.book_append_sheet(wb, wg1, "groupe1");
+  for (let e of json) {
+    for (let i in gList) {
+      if (!("Binome DEB" in e)) continue
+      else if (e["Binome DEB"].split("/").slice(-1)[0].replace(" ", "") == "groupe" + (1 + i)) {
+        gList[i].add(e)
+      }
+    }
+  }
 
-  XLSX.utils.book_append_sheet(wb, wg2, "groupe2");
+  while (json.filter((e) => "Num Binome" in e).length > 0) {
+    for (let g of gList) {
+      try { g.addForBinome(json.filter((e) => "Num Binome" in e)[0]) }
+      catch { break }
+    }
+  }
 
-  XLSX.utils.book_append_sheet(wb, wg3, "groupe3");
+  let testIndex = 0
+
+  while (json.length > 0 & testIndex < 200) {
+    let pNoGreLs = []
+    testIndex++
+    let sGList = gList.filter(function (e) {console.log(e.size, e.students.length); return e.size > e.students.length})
+
+    console.log(sGList)
+
+    if (sGList.length == 0) break
+
+    for (let g of sGList) {
+      pNoGreLs.push(getPNoGre(g.students) - pNoGre);
+    }
+
+    if (isNoGre(json[0])) gIndex = pNoGreLs.indexOf(Math.min(...pNoGreLs))
+    else gIndex = pNoGreLs.indexOf(Math.max(...pNoGreLs))
+
+    console.log(gIndex)
+
+    sGList[gIndex].add(json[0]);
+  }
+
+  for (i in gList) {
+    try {
+      let x = XLSX.utils.json_to_sheet(gList[i].students)
+      XLSX.utils.book_append_sheet(wb, x, "groupe" + (1 + i));
+    } catch { }
+  }
 
   let wgp = XLSX.utils.json_to_sheet(problemeStudents.concat(json));
   XLSX.utils.book_append_sheet(wb, wgp, "groupeProbleme");
